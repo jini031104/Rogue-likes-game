@@ -23,6 +23,11 @@ class Player {
     this._isRun = true;
   }
 
+  Damage(logs, monsterAttack) {
+    logs.push(chalk.red(`플레이어는 ${monsterAttack} 만큼 HP가 깎였다.`));
+    this.hp -= monsterAttack;
+  }
+
   set setRun(run) {
     this._isRun = run;
   }
@@ -46,13 +51,13 @@ class Monster {
     logs.push(chalk.green(`몬스터는 ${playerAttack} 만큼 HP가 깎였다.`));
     this.hp -= playerAttack;
 
-    if(this.hp <= 0) {
+    if(this.hp <= 0)
         logs.push(chalk.blue(`\n몬스터가 사망했다!`));
-    }
   }
 }
 
 function displayStatus(stage, player, monster) {
+  console.clear();
   console.log(chalk.magentaBright(`\n=== Current Status ===`));
   console.log(
     chalk.cyanBright(`| Stage: ${stage} `) +
@@ -73,12 +78,13 @@ function handleUserInputGame(logs, player, monster) {
             monster.Damage(logs, player.attack);
             if(0 < monster.hp) {
                 monster.Attack(logs);
+                player.Damage(logs, monster.attack);
             }
             break;
         case '2':
             player.Run(logs);
             break;
-        case '`':
+        case '`': // 개발자 키
             console.log(chalk.red('게임을 종료합니다.'));
             process.exit(0); // 게임 종료
             break;
@@ -103,33 +109,32 @@ const battle = async (stage, player, monster) => {
   let count = 0, monsterAtionNum = 0;
 
   while(player.hp > 0) {
-    console.clear();
     displayStatus(stage, player, monster);
 
     logs.forEach((log) => console.log(log));
 
     if(player.hp <= 0 || monster.hp <= 0 || player.getRun == true) {
-        sleep(3000);
-        break;
+      console.log(chalk.yellow(`\n다음 스테이지 준비 중...`));
+      sleep(3000);
+      break;
     }
     
     // 몬스터 행동 지문 출력
-    if(count === 0) {
-        count = 1;
-    } else {
-        monsterAtionNum = Math.floor(1 + Math.random() * 4);
-    }
+    count === 0 ? count = 1 : monsterAtionNum = Math.floor(1 + Math.random() * 4);
     MonsterAtion(monsterAtionNum);
-    console.log(
-      chalk.green(
-        `\n1. 공격 2. 도망.`,
-      ),
-    );
+    console.log(chalk.green(`\n1. 공격 2. 도망.`));
 
     // 플레이어의 선택에 따라 다음 행동 처리
     handleUserInputGame(logs, player, monster);
   }
 
+  // 플레이어 사망
+  if(player.hp <= 0) {
+    displayStatus(stage, player, monster);
+    logs.forEach((log) => console.log(log));
+    console.log(chalk.red(`\n플레이어는 사망했다...`));
+    sleep(3000);
+  }
 };
 
 export async function startGame() {
@@ -143,6 +148,8 @@ export async function startGame() {
     await battle(stage, player, monster);
 
     // 스테이지 클리어 및 게임 종료 조건
+    if(player.hp <= 0)
+      break;
 
     stage++;
   }
