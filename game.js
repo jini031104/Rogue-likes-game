@@ -7,9 +7,11 @@ function sleep(ms) {
 }
 
 class Player {
-  constructor(isRun) {
+  constructor(isRun, maxHP) {
     this._isRun = isRun;
+    this._maxHP = maxHP
     this.hp = 100;
+    this.recoveryHp = 5;
     this.attack = 5;
   }
 
@@ -28,18 +30,29 @@ class Player {
     this.hp -= monsterAttack;
   }
 
+  Recovery() {
+    if(0 < this.hp) {
+      this.hp += this.hp < this.getMaxHP ? this.recoveryHp : 0;
+      if(this.getRun === false) // 도망가지 않았을 때만 공격력 상승
+        this.attack += 2;
+    }
+  }
+
   set setRun(run) {
     this._isRun = run;
   }
   get getRun() {
     return this._isRun;
   }
+  get getMaxHP() {
+    return this._maxHP;
+  }
 }
 
 class Monster {
   constructor(stage) {
     this.hp = 15 + ((stage - 1) * 5);
-    this.attack = 5;
+    this.attack = 5 + ((stage - 1) * 5);
   }
 
   Attack(logs) {
@@ -66,7 +79,6 @@ function displayStatus(stage, player, monster) {
   );
   console.log(chalk.magentaBright(`=====================\n`));
 }
-
 
 function handleUserInputGame(logs, player, monster) {
     const choice = readlineSync.question('당신의 선택은? ');
@@ -135,11 +147,13 @@ const battle = async (stage, player, monster) => {
     console.log(chalk.red(`\n플레이어는 사망했다...`));
     sleep(3000);
   }
+  // 배틀이 끝나면 플레이어 회복 & 공격력 상승
+  player.Recovery();
 };
 
 export async function startGame() {
   console.clear();
-  const player = new Player(false);
+  const player = new Player(false, 100);
   let stage = 1;
 
   while (stage <= 10) {
