@@ -1,14 +1,6 @@
 import chalk from 'chalk';
 import readlineSync from 'readline-sync';
-
-function sleep(ms) {
-    const wakeUpTime = Date.now() + ms;
-    while (Date.now() < wakeUpTime) { }
-}
-
-function getRandom(min, max) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
-}
+import { sleep, getRandom, MonsterAtion, displayStatus } from "./functionTest.js";
 
 class Player {
     constructor() {
@@ -23,8 +15,9 @@ class Player {
         this.maxAttack = 5; // 최대 공격력
         this._attack = 0;   // 공격 = 피해력
         this._dubbleAttackSuccess = 25; // 더블 공격 성공률
+        this._runSuccess = 40;      // 도망 성공률
+        this._defenceSuccess = 30;  // 방어 성공률
         this._isRun = false;
-        this._runSuccess = 40;  // 도망 성공률
 
         this.getEventSelect = function () {
             return eventSelect;
@@ -91,6 +84,19 @@ class Player {
         this._hp -= monsterAttack;
     }
 
+    Defence(logs) {
+        let Success = getRandom(0, 99); // 0 ~ 99
+        let isSuccess = false;
+        if(Success <= this._defenceSuccess) {
+            logs.push(chalk.yellow(`방어 성공!!\n몬스터는 빈틈을 보였다!`));
+            isSuccess = true;
+        } else {
+            logs.push(chalk.green(`방어 실패...`));
+        }
+
+        return isSuccess;
+    }
+
     Run(logs) {
         let runSuccess = getRandom(0, 99); // 0 ~ 99
         if(runSuccess < this._runSuccess) {
@@ -103,7 +109,7 @@ class Player {
     }
 
     NextStageEvent() {
-        let eventSelect = 4;//getRandom(0, 4);
+        let eventSelect = getRandom(0, 4);
         let success = 0;
         this.setEventSelect(eventSelect);
         switch (eventSelect) {
@@ -131,6 +137,9 @@ class Player {
                 this._dubbleAttackSuccess += success;
                 break;
             case 3: // 방어 성공 확률 UP
+                success = getRandom(3, 10);
+                this.setSuccessUP(success);
+                this._defenceSuccess += success;
                 break;
             case 4: // 도망 성공 확률 UP
                 success = getRandom(3, 10);
@@ -148,6 +157,9 @@ class Player {
     }
     get dubbleAttackSuccess() {
         return this._dubbleAttackSuccess;
+    }
+    get defenceSuccess() {
+        return this._defenceSuccess;
     }
     get isRun() {
         return this._isRun;
@@ -192,20 +204,9 @@ class Monster {
     }
 }
 
-function displayStatus(stage, player, monster) {
-    console.clear();
-    console.log(chalk.magentaBright(`\n=== Current Status ===`));
-    console.log(
-        chalk.cyanBright(`| Stage: ${stage} `) +
-        chalk.blueBright(`| 플레이어 정보 - HP: ${player.getMaxHP()}/${player.hp} ATTACK: ${player.minAttack}~${player.maxAttack} `) +
-        chalk.redBright(`| 몬스터 정보 - HP: ${monster.hp} ATTACK: ${monster.getAttack()} |`)
-    );
-    console.log(chalk.magentaBright(`=====================\n`));
-}
 function handleUserInputGame(logs, player, monster) {
     const choice = readlineSync.question('당신의 선택은? ');
     logs.push(chalk.green(`\n${choice}를 선택하셨습니다.`));
-
     switch (choice) {
         case '1':   // 공격
             player.Attack(logs);
@@ -225,6 +226,15 @@ function handleUserInputGame(logs, player, monster) {
             }
             break;
         case '3':   // 방어
+            let success = player.Defence(logs);
+            if(success) {
+                player.Attack(logs);
+                monster.Damage(logs, player.attack * 0.6);
+                logs.push(chalk.yellow(`공격이 조금 빗나가 치명상은 피한 것 같다.`));
+            } else {
+                monster.Attack(logs);
+                player.Damage(logs, monster.getAttack());
+            }
             break;
         case '4':   // 도망
             player.Run(logs);
@@ -245,6 +255,7 @@ function handleUserInputGame(logs, player, monster) {
 
 const battle = async (stage, player, monster) => {
     let logs = [];
+    let count = 0, monsterAtionNum = 0;
     if (1 < stage) {
         switch (player.getEventSelect()) {
             case 0: // 체력 UP
@@ -275,7 +286,10 @@ const battle = async (stage, player, monster) => {
             sleep(3000);
             break;
         }
-        console.log(chalk.green(`\n1. 공격한다 2. 연속 공격(${player.dubbleAttackSuccess}%) 3. 방어. 4. 도망(${player.runSuccess}%)`));
+
+        count === 0 ? count = 1 : monsterAtionNum = getRandom(1, 4);
+        MonsterAtion(monsterAtionNum);
+        console.log(chalk.green(`\n1. 공격한다 2. 연속 공격(${player.dubbleAttackSuccess}%) 3. 방어(${player.defenceSuccess}%) 4. 도망(${player.runSuccess}%)`));
 
         handleUserInputGame(logs, player, monster);
     }
